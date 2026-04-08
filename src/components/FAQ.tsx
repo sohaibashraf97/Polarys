@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-
 const faqs = [
   {
     q: "How quickly can I expect results?",
@@ -49,9 +48,16 @@ const faqs = [
 export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
+  const params = {
+    layout: { borderRadius: 14, gap: 12 },
+    spacing: { paddingX: 19, paddingY: 20 },
+    typography: { questionSize: 16, answerSize: 17 },
+  };
+
   return (
     <section className="grid-pattern grid-pattern-left py-20 px-4 bg-surface">
-      <div className="max-w-3xl mx-auto">
+      {/* position + z-index lifts content above the ::before grid overlay */}
+      <div className="max-w-3xl mx-auto" style={{ position: "relative", zIndex: 1 }}>
         <div className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-4">
             Frequently Asked{" "}
@@ -59,34 +65,78 @@ export default function FAQ() {
           </h2>
         </div>
 
-        <div className="space-y-3">
-          {faqs.map((faq, i) => (
-            <div
-              key={i}
-              className="bg-surface-light rounded-none border border-border overflow-hidden"
-            >
-              <button
-                onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="w-full flex items-center justify-between p-5 text-left"
-              >
-                <span className="text-sm font-semibold pr-4">{faq.q}</span>
-                <ChevronDown
-                  className={`w-4 h-4 text-muted shrink-0 transition-transform ${
-                    openIndex === i ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: params.layout.gap }}>
+          {faqs.map((faq, i) => {
+            const isOpen = openIndex === i;
+            return (
               <div
-                className={`accordion-content ${openIndex === i ? "open" : ""}`}
+                key={i}
+                style={{
+                  borderRadius: params.layout.borderRadius,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  overflow: "hidden",
+                  background: "#1c1c1c",
+                }}
               >
-                <div className="px-5 pb-5 pt-0">
-                  <p className="text-sm text-muted leading-relaxed">
-                    {faq.a}
-                  </p>
+                <button
+                  onClick={() => setOpenIndex(isOpen ? null : i)}
+                  className="w-full flex items-center justify-between text-left"
+                  style={{
+                    background: "transparent",
+                    padding: `${params.spacing.paddingY}px ${params.spacing.paddingX}px`,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+                      fontWeight: 700,
+                      fontSize: params.typography.questionSize,
+                      lineHeight: 1.4,
+                      paddingRight: "1rem",
+                      color: "#ffffff",
+                    }}
+                  >
+                    {faq.q}
+                  </span>
+                  <ChevronDown
+                    className="w-4 h-4 shrink-0"
+                    style={{
+                      color: "#ffffff",
+                      transition: "transform 400ms cubic-bezier(0.22, 1, 0.36, 1)",
+                      transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                    }}
+                  />
+                </button>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateRows: isOpen ? "1fr" : "0fr",
+                    transition: "grid-template-rows 400ms cubic-bezier(0.22, 1, 0.36, 1)",
+                  }}
+                >
+                  <div style={{ overflow: "hidden" }}>
+                    <div
+                      style={{
+                        padding: `0 ${params.spacing.paddingX}px ${params.spacing.paddingY}px`,
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+                          fontSize: params.typography.answerSize,
+                          lineHeight: 1.6,
+                          color: "#ffffff",
+                          margin: 0,
+                        }}
+                      >
+                        {faq.a}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

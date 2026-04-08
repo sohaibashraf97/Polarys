@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { useDialKit } from "dialkit";
 
 const ROTATIONS = [-3.5, 1.8, -1.2, 2.8, -2.4];
 const Y_OFFSETS = [12, -6, 18, -10, 8];
@@ -49,16 +48,8 @@ export default function FullSystem() {
   const cornerRadius = 9;
   const paddingX = 20;
   const paddingY = 27;
-  const params = useDialKit("Full System Cards", {
-    spacing: {
-      // Tighter defaults; supports overlap for aggressive compaction.
-      cardGap: [2, -20, 40],
-      rowGap: [-80, -320, 40],
-    },
-  });
-
-  const cardGap = params.spacing.cardGap;
-  const rowGap = params.spacing.rowGap;
+  const cardGap = 2;
+  const rowGap = -80;
   const titleSize = 16;
   const bodySize = 22;
   const cardBackground = "#0178FA";
@@ -151,7 +142,7 @@ export default function FullSystem() {
   );
 
   return (
-    <section ref={sectionRef} id="agency" className="grid-pattern grid-pattern-left py-20 px-4">
+    <section ref={sectionRef} id="agency" className="hero-left grid-pattern grid-pattern-left py-20 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-4">

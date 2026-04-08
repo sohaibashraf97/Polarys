@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useDialKit } from "dialkit";
 
 type BoolGrid = boolean[][];
 
@@ -609,8 +608,8 @@ function AsciiLogo({
           alt={`${name} title`}
           className="h-6 w-auto object-contain"
           style={{
-            opacity: 0.72,
-            filter: "brightness(0) saturate(100%) invert(93%)",
+            opacity: 1,
+            filter: "brightness(0) saturate(100%) invert(100%)",
           }}
         />
       </div>
@@ -636,11 +635,13 @@ function ClientLogoItem({
   baseParams,
   logoScale,
   titleOffsetY,
+  logoGapX,
 }: {
   client: ClientConfig;
   baseParams: LogoParams;
   logoScale: number;
   titleOffsetY: number;
+  logoGapX: number;
 }) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -688,7 +689,7 @@ function ClientLogoItem({
     animSpeed: defaults.animationSpeed,
     fontSize: defaults.sizeLogo * logoScale,
     labelSize: defaults.sizeLabel,
-    color: "#EDEDED",
+    color: "#FFFFFF",
   };
 
   return (
@@ -697,13 +698,14 @@ function ClientLogoItem({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`${client.name} website`}
-      className="flex w-full max-w-[280px] items-center justify-center overflow-hidden transition-all duration-300 hover:brightness-125"
+      className="flex w-[280px] max-w-full items-center justify-center overflow-hidden transition-all duration-300 hover:brightness-125"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onFocus={() => setIsHovered(true)}
       onBlur={() => setIsHovered(false)}
       style={{
         padding: `${defaults.spacingPadding}px`,
+        marginInline: logoGapX < 0 ? `${logoGapX / 2}px` : undefined,
       }}
     >
       <AsciiLogo
@@ -720,19 +722,16 @@ function ClientLogoItem({
 }
 
 export default function Clients() {
-  const params = useDialKit("Client Logos", {
-    logo: {
-      logoScale: [1, 0.7, 1.7],
-    },
-    title: {
-      titleOffsetY: [12, -12, 42],
-    },
-  });
+  const params = {
+    layout: { logoGapX: 9 },
+    logo: { logoScale: 1.21 },
+    title: { titleOffsetY: -4 },
+  };
 
   const baseLogoParams: LogoParams = {
     fontSize:      3,
     opacity:       1,
-    color:         "#EDEDED",
+    color:         "#FFFFFF",
     labelSize:     10,
     animMode:      "static noise",
     animSpeed:     0.2,
@@ -740,7 +739,7 @@ export default function Clients() {
   };
 
   return (
-    <section id="clients" className="grid-pattern grid-pattern-right py-20 px-4">
+    <section id="clients" className="hero grid-pattern grid-pattern-right py-20 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-4">
@@ -752,7 +751,10 @@ export default function Clients() {
           </p>
         </div>
 
-        <div className="clients-arc-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 place-items-center gap-y-12 gap-x-8">
+        <div
+          className="clients-arc-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 place-items-center gap-y-12"
+          style={{ columnGap: `${Math.max(0, params.layout.logoGapX)}px` }}
+        >
           {clients.map((client) => (
             <ClientLogoItem
               key={client.name}
@@ -760,6 +762,7 @@ export default function Clients() {
               baseParams={baseLogoParams}
               logoScale={params.logo.logoScale}
               titleOffsetY={params.title.titleOffsetY}
+              logoGapX={params.layout.logoGapX}
             />
           ))}
         </div>

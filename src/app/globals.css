@@ -129,6 +129,12 @@ body::after {
   overflow: hidden;
 }
 
+.hero-left {
+  position: relative;
+  background: radial-gradient(circle at 30% 50%, #1a1a1a, #0b0b0b);
+  overflow: hidden;
+}
+
 /* Reusable section grid overlay with directional fade control. */
 .grid-pattern {
   position: relative;
@@ -160,14 +166,35 @@ body::after {
   -webkit-mask-image: radial-gradient(circle at 20% 50%, black, transparent 70%);
 }
 
-/* First 7 Days — scroll-driven day transition */
-@keyframes sevenDaysEnter {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Subtle visual break and containment between consecutive sections. */
+.section-stack > section {
+  position: relative;
+  isolation: isolate;
 }
 
-.seven-days-enter {
-  animation: sevenDaysEnter 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+.section-stack > section + section,
+.section-stack > * + section {
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* First 7 Days — stacked screenshot cards (GSAP-driven) */
+.seven-days-stack-shell {
+  overflow: visible;
+  perspective: 1200px;
+  perspective-origin: 50% 40%;
+}
+
+.seven-days-stack-card {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  overflow: hidden;
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.26),
+    0 8px 20px rgba(0, 0, 0, 0.2);
+  will-change: transform, opacity;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
 }
 
 /* Smooth scroll */
@@ -259,6 +286,10 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .seven-days-stack-card {
+    will-change: auto;
+  }
+
   .sticky-note {
     opacity: 1;
     transition: none;

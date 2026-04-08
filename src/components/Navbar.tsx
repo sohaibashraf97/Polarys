@@ -4,6 +4,13 @@ import { useState } from "react";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
 
+const NAV_LINKS = [
+  { label: "The Full System", href: "#agency" },
+  { label: "Clients", href: "#clients" },
+  { label: "Your Timeline", href: "#first-7-days" },
+  { label: "Pricing", href: "#pricing" },
+];
+
 export default function Navbar() {
   const [open, setOpen] = useState(false);
 
@@ -23,9 +30,28 @@ export default function Navbar() {
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-8">
+          {NAV_LINKS.map(({ label, href }) => (
+            <a
+              key={href}
+              href={href}
+              className="text-sm text-secondary hover:text-foreground transition-colors"
+            >
+              {label}
+            </a>
+          ))}
           <a
             href="#book-call"
-            className="bg-accent hover:bg-accent-dark text-white font-semibold text-sm px-5 py-2.5 rounded-none transition-colors"
+            style={{
+              background: "#0178FA",
+              color: "#EDEDED",
+              fontFamily: "var(--font-martian-mono), monospace",
+              fontWeight: 700,
+              borderRadius: 9,
+              fontSize: 13,
+              padding: "8px 18px",
+              textDecoration: "none",
+              display: "inline-block",
+            }}
           >
             Book Call
           </a>
@@ -43,11 +69,33 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden bg-background border-t border-border px-4 pb-4">
+        <div className="md:hidden bg-background border-t border-border px-4 pb-4 flex flex-col gap-2">
+          {NAV_LINKS.map(({ label, href }) => (
+            <a
+              key={href}
+              href={href}
+              className="block mt-2 text-sm text-secondary hover:text-foreground transition-colors"
+              onClick={() => setOpen(false)}
+            >
+              {label}
+            </a>
+          ))}
           <a
             href="#book-call"
-            className="block mt-2 text-center bg-accent text-white font-semibold text-sm px-5 py-2.5 rounded-none"
             onClick={() => setOpen(false)}
+            style={{
+              background: "#0178FA",
+              color: "#EDEDED",
+              fontFamily: "var(--font-martian-mono), monospace",
+              fontWeight: 700,
+              borderRadius: 9,
+              fontSize: 13,
+              padding: "8px 18px",
+              textDecoration: "none",
+              display: "block",
+              textAlign: "center",
+              marginTop: 8,
+            }}
           >
             Book Call
           </a>

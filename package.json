@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "dialkit": "^1.2.0",
+    "gsap": "^3.14.2",
     "lucide-react": "^1.7.0",
     "motion": "^12.38.0",
     "next": "16.2.2",

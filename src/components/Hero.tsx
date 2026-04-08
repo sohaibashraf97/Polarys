@@ -1,5 +1,6 @@
-import Image from "next/image";
+"use client";
 
+import Image from "next/image";
 const STATS_STYLE = {
   numberSize: 51,
   labelSize: 19,
@@ -12,8 +13,19 @@ const STATS_STYLE = {
 export default function Hero() {
   const p = STATS_STYLE
 
+  const params = {
+    padding: { top: 150, bottom: 0 },
+    svg: { widthPx: 720, opacity: 0.2, left: -70, translateY: -50 },
+  }
+
   return (
-    <section className="hero grid-pattern grid-pattern-right pt-28 pb-16 md:pt-36 md:pb-24 px-4 relative overflow-hidden">
+    <section
+      className="hero grid-pattern grid-pattern-right px-4 relative overflow-hidden"
+      style={{
+        paddingTop: params.padding.top,
+        paddingBottom: params.padding.bottom,
+      }}
+    >
       {/* Decorative logo outline */}
       <Image
         src="/logo-outline.svg"
@@ -21,7 +33,14 @@ export default function Hero() {
         aria-hidden="true"
         width={418}
         height={421}
-        className="absolute left-0 top-1/2 -translate-y-1/2 w-[40vw] max-w-[980px] h-auto opacity-10 pointer-events-none select-none z-[1]"
+        className="absolute pointer-events-none select-none z-[1] h-auto"
+        style={{
+          width: params.svg.widthPx,
+          opacity: params.svg.opacity,
+          left: params.svg.left,
+          top: "50%",
+          transform: `translateY(${params.svg.translateY}%)`,
+        }}
         priority
       />
       <div className="relative z-10 max-w-5xl mx-auto text-center">

@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useDialKit } from 'dialkit';
 
 const steps = [
   {
@@ -60,159 +63,153 @@ const APRIL_ROWS: (number | null)[][] = [
 
 const ALL_STEP_DATES = new Set([9, 10, 11, 14, 15, 16, 17]);
 const TODAY = 8;
-const CARD_BLUE = '#0178FA';
-const CARD_TEXT = '#EDEDED';
-const STEP_SCROLL_THRESHOLD_PX = 120;
-const STEP_CHANGE_COOLDOWN_MS = 260;
-const EDGE_PAUSE_MS = 650;
+const STACK_CARD_BG = '#1C1C1C';
+const STACK_CARD_TEXT = '#EDEDED';
+const STACK_BADGE_BG = '#0178FA';
+const STACK_BADGE_TEXT = '#EDEDED';
+// Scroll pixels allocated per card step
+const SCROLL_PER_STEP = 650;
 
 type CellStatus = 'empty' | 'active' | 'done' | 'upcoming' | 'today' | 'past' | 'neutral';
 
-function getCellClass(status: CellStatus): string {
-  switch (status) {
-    case 'active':   return 'bg-accent text-white font-bold';
-    case 'done':     return 'text-accent/50 font-semibold';
-    case 'upcoming': return 'text-foreground/50 font-medium';
-    case 'today':    return 'text-muted/50';
-    case 'past':     return 'text-muted/20';
-    default:         return 'text-muted/25';
-  }
-}
 
 export default function First7Days() {
   const sectionRef = useRef<HTMLElement>(null);
-  const wheelAccumRef = useRef(0);
-  const touchStartYRef = useRef<number | null>(null);
-  const activeIndexRef = useRef(0);
-  const stepCooldownUntilRef = useRef(0);
-  const edgePauseUntilRef = useRef(0);
-  const edgePauseDirectionRef = useRef<1 | -1 | 0>(0);
+  const cardRefs = useRef<(HTMLElement | null)[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const lastIndex = steps.length - 1;
 
-  useEffect(() => {
-    activeIndexRef.current = activeIndex;
-  }, [activeIndex]);
+  const dial = {
+    typography: {
+      titleSize: 21,
+      titleLineHeight: 0.96,
+      paragraphSize: 26,
+      paragraphLineHeight: 1.08,
+      dayBadgeSize: 20,
+      dayBadgeXPad: 9,
+      dayBadgeYPad: 9,
+    },
+    card: {
+      width: 450,
+      height: 260,
+      padding: 27,
+      radius: 12,
+      headingGap: 24,
+    },
+    stack: {
+      revealOffset: 90,
+      viewportHeight: 720,
+      enterFromY: 700,
+    },
+  };
+
+  const cal = useDialKit('Calendar', {
+    card: {
+      background:    { type: 'color' as const, default: '#171717' },
+      borderColor:   { type: 'color' as const, default: '#ffffff' },
+      borderOpacity: [0.09, 0, 1],
+      borderRadius:  [38, 0, 80],
+      padding:       [50, 8, 80],
+      gapFromCards:  [0, 0, 120],
+      width:         [580, 280, 900],
+    },
+    month: {
+      fontSize:     [40, 16, 64],
+      color:        { type: 'color' as const, default: '#EDEDED' },
+      paddingBelow: [19, 0, 80],
+    },
+    weekdays: {
+      fontSize:      [12, 8, 22],
+      color:         { type: 'color' as const, default: '#ffffff' },
+      colorOpacity:  [1, 0, 1],
+      letterSpacing: [0.09, 0, 0.5],
+      paddingBelow:  [31, 0, 60],
+    },
+    cell: {
+      size:        [54, 24, 90],
+      rowPadding:  [45, -20, 60],
+      fontSize:    [19, 10, 36],
+      ringColor:   { type: 'color' as const, default: '#ffffff' },
+      ringOpacity: [0.11, 0, 0.6],
+    },
+    activeDate: {
+      background:   { type: 'color' as const, default: '#0178FA' },
+      textColor:    { type: 'color' as const, default: '#ffffff' },
+      cornerRadius: [31, 0, 50],
+    },
+    textColors: {
+      upcoming: { type: 'color' as const, default: '#0178FA' },
+      done:     { type: 'color' as const, default: '#0178FA' },
+      past:     { type: 'color' as const, default: '#ffffff' },
+      today:    { type: 'color' as const, default: '#ffffff' },
+      neutral:  { type: 'color' as const, default: '#ffffff' },
+      upcomingOpacity: [1,    0, 1],
+      doneOpacity:     [1,    0, 1],
+      pastOpacity:     [0.35, 0, 1],
+      todayOpacity:    [0.25, 0, 1],
+      neutralOpacity:  [0.35, 0, 1],
+    },
+  });
+
+  // Helper: hex color + opacity → rgba string
+  const rgba = (hex: string, opacity: number) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${opacity})`;
+  };
+
+  // Capture dial values at mount time for GSAP (runs once)
+  const dialRef = useRef(dial);
+  useEffect(() => { dialRef.current = dial; });
 
   useEffect(() => {
-    const isSectionEngaged = () => {
-      const section = sectionRef.current;
-      if (!section) return false;
-      const rect = section.getBoundingClientRect();
-      const topLockLine = window.innerHeight * 0.2;
-      const bottomLockLine = window.innerHeight * 0.8;
-      return rect.top <= topLockLine && rect.bottom >= bottomLockLine;
-    };
+    gsap.registerPlugin(ScrollTrigger);
 
-    const applyStepDelta = (deltaY: number) => {
-      if (!isSectionEngaged() || deltaY === 0) return false;
+    const section = sectionRef.current;
+    if (!section) return;
 
-      const direction: 1 | -1 = deltaY > 0 ? 1 : -1;
-      const now = Date.now();
-      const currentIndex = activeIndexRef.current;
+    const cards = cardRefs.current.filter(Boolean) as HTMLElement[];
+    const { revealOffset, enterFromY } = dialRef.current.stack;
 
-      // Hold at boundaries to let the final/first state breathe before release.
-      const edgePauseStillActive = now < edgePauseUntilRef.current;
-      if (edgePauseStillActive && edgePauseDirectionRef.current === direction) {
-        return true;
-      }
+    // Set all cards to initial hidden state (below + pitched forward)
+    gsap.set(cards, {
+      y: enterFromY,
+      rotateX: 72,
+      opacity: 0,
+    });
 
-      // If the edge pause is done and user keeps moving in that direction, release scroll.
-      if (direction === 1 && currentIndex === lastIndex) return false;
-      if (direction === -1 && currentIndex === 0) return false;
+    // Build the animation timeline — each card flips up into its stacked slot
+    const tl = gsap.timeline();
+    cards.forEach((card, i) => {
+      tl.to(card, {
+        y: i * revealOffset,
+        rotateX: 0,
+        opacity: 1,
+        ease: 'power3.out',
+        duration: 1,
+      });
+    });
 
-      wheelAccumRef.current += deltaY;
-
-      // Prevent rapid-fire skipping on high momentum scroll devices.
-      if (now < stepCooldownUntilRef.current) return true;
-
-      if (Math.abs(wheelAccumRef.current) >= STEP_SCROLL_THRESHOLD_PX) {
-        const nextIndex =
-          wheelAccumRef.current > 0
-            ? Math.min(lastIndex, currentIndex + 1)
-            : Math.max(0, currentIndex - 1);
-
-        if (nextIndex !== currentIndex) {
-          setActiveIndex(nextIndex);
-          activeIndexRef.current = nextIndex;
-          stepCooldownUntilRef.current = now + STEP_CHANGE_COOLDOWN_MS;
-        }
-
-        wheelAccumRef.current = 0;
-
-        // Pause briefly at both ends before unlocking page scroll.
-        if (nextIndex === lastIndex && direction === 1) {
-          edgePauseUntilRef.current = now + EDGE_PAUSE_MS;
-          edgePauseDirectionRef.current = 1;
-        } else if (nextIndex === 0 && direction === -1) {
-          edgePauseUntilRef.current = now + EDGE_PAUSE_MS;
-          edgePauseDirectionRef.current = -1;
-        } else {
-          edgePauseDirectionRef.current = 0;
-        }
-      }
-
-      return true;
-    };
-
-    const onWheel = (event: WheelEvent) => {
-      const didCapture = applyStepDelta(event.deltaY);
-      if (didCapture) event.preventDefault();
-    };
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      const keyToDelta: Record<string, number> = {
-        ArrowDown: 80,
-        PageDown: 120,
-        ' ': event.shiftKey ? -120 : 120,
-        ArrowUp: -80,
-        PageUp: -120,
-      };
-
-      const delta = keyToDelta[event.key];
-      if (delta === undefined) return;
-
-      const didCapture = applyStepDelta(delta);
-      if (didCapture) event.preventDefault();
-    };
-
-    const onTouchStart = (event: TouchEvent) => {
-      touchStartYRef.current = event.touches[0]?.clientY ?? null;
-    };
-
-    const onTouchMove = (event: TouchEvent) => {
-      const currentY = event.touches[0]?.clientY;
-      if (currentY == null || touchStartYRef.current == null) return;
-      const deltaY = touchStartYRef.current - currentY;
-      const didCapture = applyStepDelta(deltaY);
-      if (didCapture) {
-        event.preventDefault();
-        touchStartYRef.current = currentY;
-      }
-    };
-
-    const onScroll = () => {
-      // Reset accumulation when outside section to avoid stale momentum jumps.
-      if (!isSectionEngaged()) {
-        wheelAccumRef.current = 0;
-        edgePauseDirectionRef.current = 0;
-      }
-    };
-
-    window.addEventListener('wheel', onWheel, { passive: false });
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: false });
-    window.addEventListener('scroll', onScroll, { passive: true });
+    const st = ScrollTrigger.create({
+      trigger: section,
+      start: 'bottom bottom',
+      end: `+=${steps.length * SCROLL_PER_STEP}`,
+      pin: true,
+      scrub: 1.4,
+      anticipatePin: 1,
+      animation: tl,
+      onUpdate(self) {
+        const idx = Math.min(lastIndex, Math.floor(self.progress * steps.length));
+        setActiveIndex(idx);
+      },
+    });
 
     return () => {
-      window.removeEventListener('wheel', onWheel);
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('touchstart', onTouchStart);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('scroll', onScroll);
+      st.kill();
+      tl.kill();
     };
-  }, [lastIndex]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const step = steps[activeIndex];
   const activeDates = new Set(step.dates);
@@ -234,181 +231,172 @@ export default function First7Days() {
     <section
       ref={sectionRef}
       id="first-7-days"
-      className="grid-pattern grid-pattern-left relative overflow-visible pt-20 pb-4 px-4"
+      className="hero-left grid-pattern grid-pattern-left relative pt-20 pb-4 px-4"
+      style={{ minHeight: '100vh', borderTop: '1px solid rgba(255,255,255,0.18)', borderBottom: '1px solid rgba(255,255,255,0.18)' }}
     >
       <div className="max-w-6xl mx-auto mb-12 text-center">
         <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-4">
-          The <span className="highlight">First 7 Days</span>
+          Your <span className="highlight">Timeline</span>
         </h2>
         <p className="text-muted max-w-2xl mx-auto">
           A day-by-day launch sequence that takes your LinkedIn from setup to outreach in one focused week.
         </p>
       </div>
 
-      <div className="sticky top-16 z-10 min-h-[84vh] flex items-center">
-        <div className="max-w-6xl mx-auto w-full border border-border bg-black/35 backdrop-blur-[1px] overflow-hidden shadow-[0_24px_65px_rgba(0,0,0,0.45)]">
-          <div className="flex min-h-[560px] overflow-hidden">
+      <div className="max-w-6xl mx-auto w-full">
+        <div className="flex items-start" style={{ gap: cal.card.gapFromCards }}>
 
-            {/* ── Left panel ── */}
-            <div className="flex-1 flex items-center justify-center p-6 md:p-8 lg:p-10 xl:p-12 border-r border-border bg-black/10">
+          {/* ── Left panel — stacked cards ── */}
+          <div className="flex-1 flex items-start justify-center p-2 md:p-4 lg:p-6">
+            <div className="w-full" style={{ maxWidth: dial.card.width }}>
               <div
-                className="w-full max-w-[510px] p-6 md:p-8 lg:p-9 shadow-[0_14px_40px_rgba(0,0,0,0.30)]"
+                className="seven-days-stack-shell"
                 style={{
-                  borderRadius: 10,
-                  background: CARD_BLUE,
+                  height: dial.card.height + (steps.length - 1) * dial.stack.revealOffset,
                 }}
               >
-
-                {/* Static eyebrow */}
-                <p
-                  className="text-xs font-bold uppercase tracking-[0.18em] mb-7"
-                  style={{ fontFamily: 'var(--font-subtext)', color: 'rgba(237,237,237,0.8)' }}
-                >
-                  Your First 7 Days
-                </p>
-
-                {/* Animated day content */}
-                <div key={activeIndex} className="seven-days-enter">
-                  <div className="flex items-center gap-3 mb-5">
-                    <span
-                      className="inline-flex items-center justify-center text-sm font-bold"
-                      style={{
-                        width: 32,
-                        height: 32,
-                        color: '#111',
-                        background: CARD_TEXT,
-                        fontFamily: 'var(--font-martian-mono), monospace',
-                      }}
-                    >
-                      #{activeIndex + 1}
-                    </span>
-                    <p
-                      className="font-semibold leading-none tracking-tight"
-                      style={{
-                        color: CARD_TEXT,
-                        fontFamily: 'var(--font-martian-mono), monospace',
-                        fontSize: '1.15rem',
-                        borderBottom: `2px solid ${CARD_TEXT}`,
-                        paddingBottom: 2,
-                      }}
-                    >
-                      {step.day}
-                    </p>
-                  </div>
-
-                  {/* Info card */}
-                  <div className="border border-white/30 bg-black/10 px-5 py-4">
-                    <h3
-                      className="font-semibold tracking-tight mb-2 leading-tight"
-                      style={{
-                        color: CARD_TEXT,
-                        fontFamily: 'var(--font-martian-mono), monospace',
-                        fontSize: '1.2rem',
-                      }}
-                    >
-                      {step.title}
-                    </h3>
-                    <p className="leading-relaxed font-semibold" style={{ color: CARD_TEXT, fontSize: '1.12rem' }}>
-                      {step.description}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Progress indicator */}
-                <div className="flex gap-2 mt-8">
-                  {steps.map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-[2px] transition-all duration-500"
-                      style={{
-                        width: i === activeIndex ? 44 : 18,
-                        background:
-                          i < activeIndex
-                            ? 'rgba(237,237,237,0.62)'
-                            : i === activeIndex
-                              ? CARD_TEXT
-                              : 'rgba(237,237,237,0.25)',
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* ── Right panel — Calendar ── */}
-            <div className="flex-1 hidden md:flex items-center justify-center p-6 md:p-8 lg:p-10 xl:p-12 bg-black/20">
-              <div
-                className="w-full max-w-[350px] p-6 border border-white/20 bg-black/15"
-                style={{ borderRadius: 10 }}
-              >
-                {/* Month header */}
-                <div className="flex items-center justify-between mb-8">
-                  <button
-                    disabled
-                    className="text-muted/35 cursor-default text-2xl select-none leading-none"
-                    aria-hidden="true"
+                {steps.map((item, i) => (
+                  <article
+                    key={item.day}
+                    ref={el => { cardRefs.current[i] = el; }}
+                    className="seven-days-stack-card"
+                    style={{
+                      zIndex: i + 1,
+                      padding: dial.card.padding,
+                      borderRadius: dial.card.radius,
+                      background: STACK_CARD_BG,
+                      height: dial.card.height,
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
+                    }}
+                    aria-hidden={i > activeIndex}
                   >
-                    ‹
-                  </button>
-                  <span className="text-[1.8rem] font-semibold tracking-tight" style={{ color: CARD_TEXT }}>
-                    April 2026
-                  </span>
-                  <button
-                    disabled
-                    className="text-muted/35 cursor-default text-2xl select-none leading-none"
-                    aria-hidden="true"
-                  >
-                    ›
-                  </button>
-                </div>
-
-                {/* Day-of-week headers */}
-                <div className="grid grid-cols-7 mb-2">
-                  {WEEK_DAYS.map(d => (
-                    <div
-                      key={d}
-                      className="text-center text-[11px] font-bold tracking-[0.14em] py-1"
-                      style={{ fontFamily: 'var(--font-subtext)', color: 'rgba(237,237,237,0.58)' }}
-                    >
-                      {d}
+                    <div className="flex items-start gap-4" style={{ marginBottom: dial.card.headingGap }}>
+                      <span
+                        className="inline-flex items-center justify-center leading-none font-bold whitespace-nowrap"
+                        style={{
+                          color: STACK_BADGE_TEXT,
+                          background: STACK_BADGE_BG,
+                          fontFamily: 'var(--font-martian-mono), monospace',
+                          fontSize: dial.typography.dayBadgeSize,
+                          padding: `${dial.typography.dayBadgeYPad}px ${dial.typography.dayBadgeXPad}px`,
+                        }}
+                      >
+                        {item.day}
+                      </span>
+                      <h3
+                        className="font-semibold tracking-tight"
+                        style={{
+                          color: STACK_CARD_TEXT,
+                          fontFamily: 'var(--font-martian-mono), monospace',
+                          fontSize: dial.typography.titleSize,
+                          lineHeight: dial.typography.titleLineHeight,
+                        }}
+                      >
+                        {item.title}
+                      </h3>
                     </div>
-                  ))}
-                </div>
 
-                {/* Date grid */}
-                {APRIL_ROWS.map((row, ri) => (
-                  <div key={ri} className="grid grid-cols-7">
-                    {row.map((day, ci) => {
-                      const status = getCellStatus(day);
-                      if (status === 'empty') return <div key={`${ri}-${ci}`} />;
-
-                      return (
-                        <div key={`${ri}-${ci}`} className="flex flex-col items-center py-[3px]">
-                          <div
-                            className={`w-10 h-10 flex items-center justify-center text-lg transition-all duration-300 ${getCellClass(status)}`}
-                          >
-                            {day}
-                          </div>
-                          {status === 'today' && (
-                            <div
-                              style={{
-                                width: 3,
-                                height: 3,
-                                background: 'var(--text-muted)',
-                                opacity: 0.45,
-                                marginTop: 2,
-                              }}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                    <p
+                      className="font-semibold max-w-[92%]"
+                      style={{
+                        color: STACK_CARD_TEXT,
+                        fontSize: dial.typography.paragraphSize,
+                        lineHeight: dial.typography.paragraphLineHeight,
+                      }}
+                    >
+                      {item.description}
+                    </p>
+                  </article>
                 ))}
               </div>
             </div>
-
           </div>
+
+          {/* ── Right panel — Calendar ── */}
+          <div className="flex-1 hidden md:flex items-start justify-center p-2 md:p-4 lg:p-6">
+            <div
+              className="w-full flex flex-col"
+              style={{
+                maxWidth:     cal.card.width,
+                height:       dial.card.height + (steps.length - 1) * dial.stack.revealOffset,
+                padding:      cal.card.padding,
+                borderRadius: cal.card.borderRadius,
+                background:   cal.card.background,
+                border:       `1px solid ${rgba(cal.card.borderColor, cal.card.borderOpacity)}`,
+              }}
+            >
+              {/* Month header */}
+              <div className="flex items-center justify-between" style={{ marginBottom: cal.month.paddingBelow }}>
+                <button disabled className="cursor-default select-none leading-none" style={{ color: rgba(cal.month.color, 0.3), fontSize: cal.month.fontSize }} aria-hidden="true">‹</button>
+                <span className="font-semibold tracking-tight" style={{ color: cal.month.color, fontSize: cal.month.fontSize }}>
+                  April 2026
+                </span>
+                <button disabled className="cursor-default select-none leading-none" style={{ color: rgba(cal.month.color, 0.3), fontSize: cal.month.fontSize }} aria-hidden="true">›</button>
+              </div>
+
+              {/* Day-of-week headers */}
+              <div className="grid grid-cols-7" style={{ marginBottom: cal.weekdays.paddingBelow }}>
+                {WEEK_DAYS.map(d => (
+                  <div
+                    key={d}
+                    className="text-center font-bold"
+                    style={{
+                      fontFamily:    'var(--font-subtext)',
+                      fontSize:      cal.weekdays.fontSize,
+                      color:         rgba(cal.weekdays.color, cal.weekdays.colorOpacity),
+                      letterSpacing: `${cal.weekdays.letterSpacing}em`,
+                    }}
+                  >
+                    {d}
+                  </div>
+                ))}
+              </div>
+
+              {/* Date grid */}
+              <div className="flex-1 flex flex-col justify-start" style={{ gap: cal.cell.rowPadding }}>
+              {APRIL_ROWS.map((row, ri) => (
+                <div key={ri} className="grid grid-cols-7">
+                  {row.map((day, ci) => {
+                    const status = getCellStatus(day);
+                    if (status === 'empty') return <div key={`${ri}-${ci}`} />;
+
+                    const isActive = status === 'active';
+
+                    const textColor = isActive ? cal.activeDate.textColor : (() => {
+                      switch (status) {
+                        case 'upcoming': return rgba(cal.textColors.upcoming, cal.textColors.upcomingOpacity);
+                        case 'done':     return rgba(cal.textColors.done,     cal.textColors.doneOpacity);
+                        case 'past':     return rgba(cal.textColors.past,     cal.textColors.pastOpacity);
+                        case 'today':    return rgba(cal.textColors.today,    cal.textColors.todayOpacity);
+                        default:         return rgba(cal.textColors.neutral,  cal.textColors.neutralOpacity);
+                      }
+                    })();
+
+                    return (
+                      <div key={`${ri}-${ci}`} className="flex flex-col items-center">
+                        <div
+                          className="flex items-center justify-center font-semibold transition-all duration-300"
+                          style={{
+                            width:        cal.cell.size,
+                            height:       cal.cell.size,
+                            fontSize:     cal.cell.fontSize,
+                            borderRadius: isActive ? cal.activeDate.cornerRadius : '50%',
+                            background:   isActive ? cal.activeDate.background : 'transparent',
+                            border:       `1px solid ${rgba(cal.cell.ringColor, cal.cell.ringOpacity)}`,
+                            color:        textColor,
+                          }}
+                        >
+                          {day}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </section>
