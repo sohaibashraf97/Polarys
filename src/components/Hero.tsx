@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useDialKit } from "dialkit";
 
 const STATS_STYLE = {
   numberSize: 51,
@@ -15,10 +14,7 @@ const STATS_STYLE = {
 export default function Hero() {
   const p = STATS_STYLE
 
-  const d = useDialKit("Stat Number", {
-    letterSpacing: [0.035, -0.1, 0.15, 0.005] as [number, number, number, number],
-    symbolGap:     [0.095, -0.05, 0.15, 0.005] as [number, number, number, number],
-  });
+  const d = { letterSpacing: 0.035, symbolGap: 0.095 };
 
   const params = {
     padding: { top: 150, bottom: 0 },
