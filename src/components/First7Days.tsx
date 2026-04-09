@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react';
+import { useDialKit } from 'dialkit';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -93,6 +94,10 @@ function CardContent({ item }: { item: typeof steps[0] }) {
 }
 
 export default function First7Days() {
+  const params = useDialKit('Timeline', {
+    cardGap: [50, 0, 120],
+  });
+
   const sectionRef = useRef<HTMLElement>(null);
   const cardRefs = useRef<(HTMLElement | null)[]>([]);
   const dotRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -196,7 +201,7 @@ export default function First7Days() {
           style={{ width: 2, background: LINE_COLOR, position: 'absolute' }}
         />
 
-        <div className="flex flex-col" style={{ gap: 54 }}>
+        <div className="flex flex-col" style={{ gap: params.cardGap }}>
           {steps.map((item, i) => (
             <div
               key={item.day}
