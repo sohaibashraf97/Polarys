@@ -1,9 +1,41 @@
 "use client";
 
 import Image from "next/image";
+import type { MouseEvent } from "react";
 
 export default function Navbar() {
   const logoParams = { logoHeight: 23, offsetX: 8, offsetY: -1 };
+  const getNavbarHeight = () =>
+    document.getElementById("site-navbar")?.getBoundingClientRect().height ?? 0;
+
+  const scrollToSection = (sectionId: string, align: "center" | "below-navbar") => {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    const navbarHeight = getNavbarHeight();
+    const sectionRect = section.getBoundingClientRect();
+    const sectionTop = window.scrollY + sectionRect.top;
+    let targetY = sectionTop - navbarHeight;
+
+    if (align === "center") {
+      // Place the section midpoint at the viewport midpoint.
+      const sectionMidpoint = sectionTop + sectionRect.height / 2;
+      targetY = sectionMidpoint - window.innerHeight / 2;
+    }
+
+    const maxY = document.documentElement.scrollHeight - window.innerHeight;
+    const clampedY = Math.min(Math.max(0, targetY), Math.max(0, maxY));
+
+    window.history.pushState(null, "", `#${sectionId}`);
+    window.scrollTo({ top: clampedY, behavior: "smooth" });
+  };
+
+  const handleSectionClick =
+    (sectionId: string, align: "center" | "below-navbar") =>
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      scrollToSection(sectionId, align);
+    };
 
   return (
     <>
@@ -32,6 +64,7 @@ export default function Navbar() {
       </svg>
 
       <header
+        id="site-navbar"
         className="fixed top-0 left-0 right-0 z-50 border-b border-border overflow-hidden"
         style={{
           backdropFilter: "url(#ascii-pixelate)",
@@ -72,10 +105,10 @@ export default function Navbar() {
           <div className="ml-auto flex items-center gap-9">
             {/* Desktop Nav Links */}
             <nav className="hidden md:flex items-center justify-end gap-6">
-              <a href="#system" className="text-sm text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "var(--font-martian-mono), monospace" }}>Our System</a>
-              <a href="#clients" className="text-sm text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "var(--font-martian-mono), monospace" }}>Clients</a>
-              <a href="#timeline" className="text-sm text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "var(--font-martian-mono), monospace" }}>Your Timeline</a>
-              <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "var(--font-martian-mono), monospace" }}>Pricing</a>
+              <a href="#agency" onClick={handleSectionClick("agency", "center")} className="text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "var(--font-martian-mono), monospace", fontSize: 12 }}>Our System</a>
+              <a href="#clients" onClick={handleSectionClick("clients", "center")} className="text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "var(--font-martian-mono), monospace", fontSize: 12 }}>Clients</a>
+              <a href="#first-7-days" onClick={handleSectionClick("first-7-days", "below-navbar")} className="text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "var(--font-martian-mono), monospace", fontSize: 12 }}>Your Timeline</a>
+              <a href="#pricing" onClick={handleSectionClick("pricing", "center")} className="text-muted-foreground hover:text-foreground transition-colors" style={{ fontFamily: "var(--font-martian-mono), monospace", fontSize: 12 }}>Pricing</a>
             </nav>
 
             {/* Book Call */}
