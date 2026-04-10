@@ -1,10 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import type { MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 
 export default function Navbar() {
-  const logoParams = { logoHeight: 23, offsetX: 8, offsetY: -1 };
+  const logoParams = { logoSize: 23, offsetX: 8, offsetY: -1 };
+  const [isIOSWebKit, setIsIOSWebKit] = useState(false);
+
+  useEffect(() => {
+    // iOS browsers (including Chrome/Firefox) run on WebKit and do not
+    // reliably support backdrop-filter with SVG URL references.
+    setIsIOSWebKit(/iP(hone|ad|od)/.test(navigator.userAgent));
+  }, []);
   const getNavbarHeight = () =>
     document.getElementById("site-navbar")?.getBoundingClientRect().height ?? 0;
 
@@ -67,8 +74,8 @@ export default function Navbar() {
         id="site-navbar"
         className="fixed top-0 left-0 right-0 z-50 border-b border-border overflow-hidden"
         style={{
-          backdropFilter: "url(#ascii-pixelate)",
-          WebkitBackdropFilter: "url(#ascii-pixelate)",
+          backdropFilter: isIOSWebKit ? "blur(2px) contrast(1.08)" : "url(#ascii-pixelate)",
+          WebkitBackdropFilter: isIOSWebKit ? "blur(2px) contrast(1.08)" : "url(#ascii-pixelate)",
           background: "rgba(12, 12, 12, 0.88)",
         }}
       >
@@ -96,9 +103,13 @@ export default function Navbar() {
             <Image
               src="/logo_png.png"
               alt="Polarys"
-              width={120}
-              height={40}
-              style={{ height: logoParams.logoHeight, width: "auto", transform: `translate(${logoParams.offsetX}px, ${logoParams.offsetY}px)` }}
+              width={416}
+              height={416}
+              style={{
+                height: logoParams.logoSize,
+                width: logoParams.logoSize,
+                transform: `translate(${logoParams.offsetX}px, ${logoParams.offsetY}px)`,
+              }}
             />
           </a>
 
