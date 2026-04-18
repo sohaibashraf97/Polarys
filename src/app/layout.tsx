@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Martian_Mono } from "next/font/google";
-import { DialRoot } from "dialkit";
 import "./globals.css";
-import "dialkit/styles.css";
 const martianMono = Martian_Mono({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
@@ -28,7 +26,6 @@ export default function RootLayout({
     <html lang="en" className={`${martianMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         {children}
-        <DialRoot position="top-right" />
       </body>
     </html>
   );

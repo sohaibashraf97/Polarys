@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useDialKit } from "dialkit";
 
 type BoolGrid = boolean[][];
 
@@ -819,36 +818,67 @@ function ClientLogoItem({
 export default function Clients() {
   const arcOffsets = [0, 10, 0, 0];
   const [isMobile, setIsMobile] = useState(false);
-  const logoDials = useDialKit("Clients Logos", {
+  const mobileLogoDials: LogoDialMap = {
     entropy: {
-      size: [0.89, 0.6, 1.8, 0.01],
-      stretchX: [0.89, 0.7, 1.3, 0.01],
-      stretchY: [1, 0.7, 1.3, 0.01],
-      offsetX: [0, -60, 60, 1],
-      offsetY: [0, -60, 60, 1],
+      size: 0.93,
+      stretchX: 0.74,
+      stretchY: 1,
+      offsetX: 0,
+      offsetY: 0,
     },
     gryd: {
-      size: [1.01, 0.6, 1.8, 0.01],
-      stretchX: [0.91, 0.7, 1.3, 0.01],
-      stretchY: [1, 0.7, 1.3, 0.01],
-      offsetX: [0, -60, 60, 1],
-      offsetY: [-3, -60, 60, 1],
+      size: 1.01,
+      stretchX: 0.91,
+      stretchY: 1,
+      offsetX: 0,
+      offsetY: -3,
     },
     hex: {
-      size: [1.05, 0.6, 1.8, 0.01],
-      stretchX: [0.95, 0.7, 1.3, 0.01],
-      stretchY: [1, 0.7, 1.3, 0.01],
-      offsetX: [0, -60, 60, 1],
-      offsetY: [4, -60, 60, 1],
+      size: 1.11,
+      stretchX: 0.88,
+      stretchY: 1,
+      offsetX: 0,
+      offsetY: 4,
     },
     milkstraw: {
-      size: [0.96, 0.6, 1.8, 0.01],
-      stretchX: [0.92, 0.7, 1.3, 0.01],
-      stretchY: [1, 0.7, 1.3, 0.01],
-      offsetX: [0, -60, 60, 1],
-      offsetY: [-4, -60, 60, 1],
+      size: 1.07,
+      stretchX: 0.82,
+      stretchY: 1.01,
+      offsetX: 0,
+      offsetY: -6,
     },
-  }) as LogoDialMap;
+  };
+
+  const desktopLogoDials: LogoDialMap = {
+    entropy: {
+      size: 0.89,
+      stretchX: 0.89,
+      stretchY: 1,
+      offsetX: 0,
+      offsetY: 0,
+    },
+    gryd: {
+      size: 1.01,
+      stretchX: 0.91,
+      stretchY: 1,
+      offsetX: 0,
+      offsetY: -3,
+    },
+    hex: {
+      size: 1.05,
+      stretchX: 0.95,
+      stretchY: 1,
+      offsetX: 0,
+      offsetY: 4,
+    },
+    milkstraw: {
+      size: 0.96,
+      stretchX: 0.92,
+      stretchY: 1,
+      offsetX: 0,
+      offsetY: -4,
+    },
+  };
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -910,7 +940,11 @@ export default function Clients() {
                 baseParams={baseLogoParams}
                 logoScale={params.logo.logoScale}
                 isMobile={isMobile}
-                logoDial={logoDials[dialKeyByClientName[client.name]]}
+                logoDial={
+                  isMobile
+                    ? mobileLogoDials[dialKeyByClientName[client.name]]
+                    : desktopLogoDials[dialKeyByClientName[client.name]]
+                }
                 titleOffsetY={params.title.titleOffsetY}
                 logoGapX={params.layout.logoGapX}
                 hoverParams={hoverParams}
